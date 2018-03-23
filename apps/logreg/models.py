@@ -52,4 +52,4 @@ class User(models.Model):
 	updated_at = models.DateTimeField(auto_now = True)
 	objects = UserManager()
 	def __unicode__(self):
-		return "Author: " + self.name
+		return "Author: " + self.first_name
