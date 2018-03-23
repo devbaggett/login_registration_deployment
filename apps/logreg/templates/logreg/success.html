@@ -1,0 +1,42 @@
+<html>
+<head>
+  <title>Login Page</title>
+</head>
+<body>
+  <h1 style="display: inline-block;">Success! Welcome {{ request.session.first_name }}!</h1>
+  <a href="/logoff" style="display: inline-block; margin-left: 300px;">Log Off</a>
+  {% if messages %}
+        {% for message in messages %}
+          <p>{{ message.message }}</p>
+        {% endfor %}
+      {% endif %}
+  <h2>User Info</h2>
+  <hr>
+    <table>
+      <tr>
+        <th>ID</th>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Email</th>
+        <th>Password</th>
+      </tr>
+    {% for user in users %}
+      <tr>
+        <td>{{ user.id }}</td>
+        <td>{{ user.first_name }}</td>
+        <td>{{ user.last_name }}</td>
+        <td>{{ user.email }}</td>
+        <td>{{ user.pw }}</td>
+      </tr>
+    {% endfor %}
+    </table>
+    {% if users %}
+    <hr>
+    <form action="/remove" method="POST">
+      {% csrf_token %}
+      Enter the ID for the email you wish to delete: <input type="text" name="id">
+      <input type="submit" value="Remove Email">
+    </form>
+    {% endif %}
+</body>
+</html>
