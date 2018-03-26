@@ -5,61 +5,90 @@ from .models import *
 import bcrypt
 
 def index(request):
-	if "validate" not in request.session:
-		request.session['validate'] = ''
 	return render(request, 'logreg/index.html')
 
 def register(request):
-	request.session['validate'] = 'registration'
 	errors = User.objects.validation(request.POST, 'register')
 	if len(errors):
 		for error in errors.itervalues():
 			messages.error(request, error)
-		return redirect('/')
+			return redirect('/')
 	else:
 		new_user = User.objects.create(
-			first_name=request.POST['first_name'],
-			last_name=request.POST['last_name'],
-			email=request.POST['email'],
-			pw=bcrypt.hashpw(request.POST['pw'].encode(), bcrypt.gensalt()))
-		request.session['first_name'] = new_user.first_name
-	return redirect('/success')
+			name		= request.POST['name'],
+			username 	= request.POST['username'],
+			pw			= bcrypt.hashpw(request.POST['pw'].encode(), bcrypt.gensalt()))
+		request.session['name'] = new_user.name
+		request.session['id']	= new_user.id
+	return redirect('/dashboard')
 
 def login(request):
-	request.session['validate'] = 'login'
 	errors = User.objects.validation(request.POST, 'login')
 	if len(errors):
 		for error in errors.itervalues():
 			messages.error(request, error)
 		return redirect('/')
-	login_user = User.objects.get(email=request.POST['email_login'])
-	request.session['first_name'] = login_user.first_name
-	context = {"users": User.objects.all()}
-	return redirect('/success', context)
+	else:
+		login_user = User.objects.get(username=request.POST['user_login'])
+		request.session['name']	= login_user.name
+		request.session['id']	= login_user.id
+	return redirect('/dashboard')
 
-def success(request):
-	if "first_name" not in request.session:
+def dashboard(request):
+	if 'id' not in request.session:
 		return redirect('/')
-	if request.session['validate'] == 'registration':
-		messages.success(request, "Successfully registered!")
-	elif request.session['validate'] == 'login':
-		messages.success(request, "Successfully logged in!")
-	context = {"users": User.objects.all()}
-	return render(request, 'logreg/success.html', context)
+	this_user = User.objects.get(id=request.session['id'])
+	context = {
+			# join manytomanyfield and foreignkeys between users and items
+			"user_items": this_user.shared_items.all().order_by('-created_at'),
+			"all_items": Item.objects.all().exclude(users=request.session['id']).exclude(creator_id=request.session['id']).order_by('-created_at')
+		}
+	return render(request, 'logreg/dashboard.html', context)
 
-def remove(request):
-	errors = User.objects.validation(request.POST, 'remove_id')
+def create_item(request):
+	if 'id' not in request.session:
+		return redirect('/')
+	return render(request, 'logreg/create_item.html')
+
+def create_item_process(request):
+	errors = Item.objects.validation(request.POST)
 	if len(errors):
 		for error in errors.itervalues():
 			messages.error(request, error)
-		return redirect('/success')
+			return redirect('/create_item')
 	else:
-		user = User.objects.get(id=request.POST['id'])
-		user.delete()
-	return redirect('/success')
+		new_item = Item.objects.create(
+			name		= request.POST['item'],
+			creator_id 	= request.session['id'])
+		new_item.users.add(request.session['id'])
+	return redirect('/dashboard')
 
-def logoff(request):
+def add_wishlist(request, id):
+	this_user = User.objects.get(id=request.session['id'])
+	this_item = Item.objects.get(id=id)
+	this_user.shared_items.add(this_item)
+	return redirect('/dashboard')
+
+def wish_items(request, id):
+	if 'id' not in request.session:
+		return redirect('/')
+	context = {
+		"this_item": Item.objects.get(id=id),
+		"shared_users": Item.objects.get(id=id).users.all().exclude(id=request.session['id'])
+	}
+	return render(request, 'logreg/wish_items.html', context)
+
+def remove_item(request, id):
+	this_user = User.objects.get(id=request.session['id'])
+	this_item = Item.objects.get(id=id)
+	this_user.shared_items.remove(this_item)
+	return redirect('/dashboard')
+
+def delete_item(request, id):
+	this_item = Item.objects.get(id=id)
+	this_item.delete()
+	return redirect('/dashboard')
+
+def logout(request):
 	request.session.clear()
 	return redirect('/')
-
-
