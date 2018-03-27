@@ -14,22 +14,27 @@ class UserManager(models.Manager):
 				errors['name'] = "Name must contain at least 3 letters!"
 			if not NAME_REGEX.match(postData['name']):
 				errors['name'] = "Name cannot be blank and can only contain letters!"
-			elif len(postData['username']) < 3:
-				errors['username'] = "Username must contain at least 3 letters!"
-			elif not NAME_REGEX.match(postData['username']):
-				errors['username'] = "Username cannot be blank and can only contain letters!"
-			elif User.objects.filter(username=postData['username']):
-				errors['username'] = "Username already being used!"
+			elif len(postData['alias']) < 3:
+				errors['alias'] = "Alias must contain at least 3 letters!"
+			elif not NAME_REGEX.match(postData['alias']):
+				errors['alias'] = "Alias cannot be blank and can only contain letters!"
+			elif User.objects.filter(alias=postData['alias']):
+				errors['alias'] = "Alias already being used!"
+			elif not EMAIL_REGEX.match(postData['email']):
+				errors['email'] = "Invalid email!"
+			elif User.objects.filter(email=postData['email']):
+				errors['email'] = "Email already being used!"
 			elif len(postData['pw']) < 9:
 				errors['pw'] = "Password must contain more than 8 characters!"
 			elif not postData['pw'] == postData['confirm_pw']:
 				errors['pw'] = "Both passwords must match!"
 		if error_validation == 'login':
-			user = User.objects.filter(username=postData['user_login'])
-			if not NAME_REGEX.match(postData['user_login']):
-				errors['user_login'] = "Invalid username"
-			elif not User.objects.filter(username=postData['user_login']):
-				errors['user_login'] = "No username in system"
+			user = User.objects.filter(email=postData['email_login'])
+			if not EMAIL_REGEX.match(postData['email_login']):
+				errors['email_login'] = "Invalid email"
+			elif not User.objects.filter(email=postData['email_login']):
+				errors['email_login'] = "No email in system"
+				print postData['email_login']
 			elif not bcrypt.checkpw(postData['pw_login'].encode(), user[0].pw.encode()):
 				errors['pw_login'] = "Invalid login and/or password!"
 		return errors
@@ -41,24 +46,22 @@ class WishManager(models.Manager):
 			errors['item'] = "Item must contain more than 3 characters!"
 		return errors
 
-# one user can have many items
-# one item can have many users
-# one creator can create many items
-# one item can have one creator
+# user can have many pokes
+# a user can poke many people
 
 class User(models.Model):
 	name 		= models.CharField(max_length=255)
-	username 	= models.CharField(max_length=255)
+	alias	 	= models.CharField(max_length=255)
+	email 		= models.CharField(max_length=255)
+	dob			= models.DateField(null=True, blank=True)
 	pw 			= models.CharField(max_length=255)
 	objects 	= UserManager()
 	def __unicode__(self):
 		return self.name
 
-class Item(models.Model):
-	name		= models.CharField(max_length=255)
-	created_at	= models.DateField(auto_now_add=True)
-	users		= models.ManyToManyField(User, related_name='shared_items')
-	creator		= models.ForeignKey(User, related_name='created_items')
+class Poke(models.Model):
+	creator 	= models.ForeignKey(User, related_name="pokers")
+	recipient	= models.ForeignKey(User, related_name="pokees")
 	objects		= WishManager()
 	def __unicode__(self):
-		return self.name
+		return unicode(self.creator)

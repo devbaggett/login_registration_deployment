@@ -1,6 +1,8 @@
 from django.shortcuts import render, HttpResponse, redirect
 from django.contrib.messages import error
 from django.contrib import messages
+from django.db.models import Count
+from operator import itemgetter
 from .models import *
 import bcrypt
 
@@ -16,11 +18,13 @@ def register(request):
 	else:
 		new_user = User.objects.create(
 			name		= request.POST['name'],
-			username 	= request.POST['username'],
+			alias 		= request.POST['alias'],
+			email		= request.POST['email'],
+			dob			= request.POST['dob'],
 			pw			= bcrypt.hashpw(request.POST['pw'].encode(), bcrypt.gensalt()))
 		request.session['name'] = new_user.name
 		request.session['id']	= new_user.id
-	return redirect('/dashboard')
+	return redirect('/pokes')
 
 def login(request):
 	errors = User.objects.validation(request.POST, 'login')
@@ -29,65 +33,52 @@ def login(request):
 			messages.error(request, error)
 		return redirect('/')
 	else:
-		login_user = User.objects.get(username=request.POST['user_login'])
+		login_user = User.objects.get(email=request.POST['email_login'])
 		request.session['name']	= login_user.name
 		request.session['id']	= login_user.id
-	return redirect('/dashboard')
+	return redirect('/pokes')
 
-def dashboard(request):
-	if 'id' not in request.session:
-		return redirect('/')
-	this_user = User.objects.get(id=request.session['id'])
+	
+
+def pokes(request):
+	current_user = User.objects.get(id=request.session['id'])
+	user = User.objects.annotate(num_pokers=Count('pokees')).filter(id=request.session['id']).first()
+	if user:
+		pokees = user.pokees.all()
+		new_pokees = {}
+		for poke in pokees:
+			if poke.creator.id not in new_pokees:
+				new_pokees[poke.creator.id] = [poke.creator.name, 1]
+			else:
+				new_pokees[poke.creator.id][1] += 1
+		new_pokers = []
+		for poke in new_pokees.itervalues():
+			new_pokers.append(poke)
+
+	pokelist = []
+	pokelist = sorted(new_pokers, key=itemgetter(1))
+	print pokelist
+
+
+
+
 	context = {
-			# join manytomanyfield and foreignkeys between users and items
-			"user_items": this_user.shared_items.all().order_by('-created_at'),
-			"all_items": Item.objects.all().exclude(users=request.session['id']).exclude(creator_id=request.session['id']).order_by('-created_at')
-		}
-	return render(request, 'logreg/dashboard.html', context)
-
-def create_item(request):
-	if 'id' not in request.session:
-		return redirect('/')
-	return render(request, 'logreg/create_item.html')
-
-def create_item_process(request):
-	errors = Item.objects.validation(request.POST)
-	if len(errors):
-		for error in errors.itervalues():
-			messages.error(request, error)
-			return redirect('/create_item')
-	else:
-		new_item = Item.objects.create(
-			name		= request.POST['item'],
-			creator_id 	= request.session['id'])
-		new_item.users.add(request.session['id'])
-	return redirect('/dashboard')
-
-def add_wishlist(request, id):
-	this_user = User.objects.get(id=request.session['id'])
-	this_item = Item.objects.get(id=id)
-	this_user.shared_items.add(this_item)
-	return redirect('/dashboard')
-
-def wish_items(request, id):
-	if 'id' not in request.session:
-		return redirect('/')
-	context = {
-		"this_item": Item.objects.get(id=id),
-		"shared_users": Item.objects.get(id=id).users.all().exclude(id=request.session['id'])
+		"pokelist" : pokelist,
+		"new_pokees" : new_pokees,
+		"poke_count" : len(new_pokees),
+		"pokes_acquired" : Poke.objects.filter(recipient=request.session['id']),
+		"users" : User.objects.all().exclude(id=request.session['id'])
 	}
-	return render(request, 'logreg/wish_items.html', context)
+	return render(request, 'logreg/pokes.html', context)
 
-def remove_item(request, id):
-	this_user = User.objects.get(id=request.session['id'])
-	this_item = Item.objects.get(id=id)
-	this_user.shared_items.remove(this_item)
-	return redirect('/dashboard')
-
-def delete_item(request, id):
-	this_item = Item.objects.get(id=id)
-	this_item.delete()
-	return redirect('/dashboard')
+def pokeSomeone(request, id):
+	current_user = User.objects.get(id=request.session['id'])
+	user_being_poked = User.objects.get(id=id)
+	
+	poke = Poke.objects.create(
+		creator 		= current_user,
+		recipient		= user_being_poked)
+	return redirect('/pokes')
 
 def logout(request):
 	request.session.clear()

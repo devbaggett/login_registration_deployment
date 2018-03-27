@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Pokes</title>
+</head>
+<body>
+	<div style="margin-left: 800px;">
+		<a href="/logout">Logout</a>
+	</div>
+	<div>
+		<h2>Hello, {{ request.session.name }}!</h2>
+		<h3>{{ poke_count }} people poked you!</h3>
+	</div>
+	<hr>
+	<div>
+		{% for poke in pokelist reversed %}
+		
+		<ul>
+			<li>{{ poke.0 }} poked you {{ poke.1 }} times.</li>
+		</ul>
+	
+		{% endfor %}
+	</div>
+	<div>
+		<h3>People you may want to poke!</h3>
+		<table>
+			<tr>
+				<th>Name</th>
+				<th>Alias</th>
+				<th>Email Address</th>
+				<th>Poke History</th>
+				<th>Action</th>
+			</tr>
+			{% for user in users %}
+			<tr>
+				<td>{{ user.name }}</td>
+				<td>{{ user.alias }}</td>
+				<td>{{ user.email }}</td>
+				<td>{{ user.pokees.count }}</td>
+				<td><a href="/poke/{{ user.id }}">Poke</a></td>
+			</tr>
+			{% endfor %}
+		</table>
+	</div>
+		
+</body>
+</html>
