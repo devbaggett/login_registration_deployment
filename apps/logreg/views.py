@@ -39,6 +39,8 @@ def login(request):
 	return redirect('/dashboard')
 
 def dashboard(request):
+	if 'id' not in request.session:
+		return redirect('/')
 	current_user = User.objects.get(id=request.session['id'])
 	current_date = date.today()
 	user_appointments = current_user.appointments.all()
@@ -69,6 +71,8 @@ def addAppointment(request):
 	return redirect('/dashboard')
 
 def editAppointment(request, id):
+	if 'id' not in request.session:
+		return redirect('/')
 	context = {
 		"task" : Appointment.objects.get(id=id)
 	}
@@ -79,7 +83,7 @@ def updateAppointment(request, id):
 	if len(errors):
 		for error in errors.itervalues():
 			messages.error(request, error)
-		return redirect('/dashboard')
+		return redirect('/edit/' + id)
 	task = Appointment.objects.get(id=id)
 	if request.POST['desc']:
 		task.desc = request.POST['desc']
