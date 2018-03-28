@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 from django.db import models
+from datetime import date, datetime
 import re
 import bcrypt
 
@@ -14,12 +15,6 @@ class UserManager(models.Manager):
 				errors['name'] = "Name must contain at least 3 letters!"
 			if not NAME_REGEX.match(postData['name']):
 				errors['name'] = "Name cannot be blank and can only contain letters!"
-			elif len(postData['alias']) < 3:
-				errors['alias'] = "Alias must contain at least 3 letters!"
-			elif not NAME_REGEX.match(postData['alias']):
-				errors['alias'] = "Alias cannot be blank and can only contain letters!"
-			elif User.objects.filter(alias=postData['alias']):
-				errors['alias'] = "Alias already being used!"
 			elif not EMAIL_REGEX.match(postData['email']):
 				errors['email'] = "Invalid email!"
 			elif User.objects.filter(email=postData['email']):
@@ -39,19 +34,30 @@ class UserManager(models.Manager):
 				errors['pw_login'] = "Invalid login and/or password!"
 		return errors
 
-class WishManager(models.Manager):
-	def validation(self, postData):
+class AppointmentManager(models.Manager):
+	def validation(self, postData, error_validation):
 		errors = {}
-		if len(postData['item']) < 3:
-			errors['item'] = "Item must contain more than 3 characters!"
+		if error_validation == 'add_appointment':
+			if len(postData['task']) < 3:
+				errors['task'] = "Appointment must have more than 2 characters!"
+			if not postData['date']:
+				errors['date'] = "No date entered."
+			elif datetime.strptime(postData['date'], '%Y-%m-%d').date() < date.today():
+				errors['date'] = "Date must be in the future."
+			if not postData['time']:
+				errors['time'] = "No time entered."
+		if error_validation == 'update_appointment':
+			if postData['date']:
+				if datetime.strptime(postData['date'], '%Y-%m-%d').date() < date.today():
+					errors['date'] = "Date must be in the future."
 		return errors
 
-# user can have many pokes
-# a user can poke many people
+# a user can have many appointments
+# an appointment can have one user
+# one to many relationship
 
 class User(models.Model):
 	name 		= models.CharField(max_length=255)
-	alias	 	= models.CharField(max_length=255)
 	email 		= models.CharField(max_length=255)
 	dob			= models.DateField(null=True, blank=True)
 	pw 			= models.CharField(max_length=255)
@@ -59,9 +65,12 @@ class User(models.Model):
 	def __unicode__(self):
 		return self.name
 
-class Poke(models.Model):
-	creator 	= models.ForeignKey(User, related_name="pokers")
-	recipient	= models.ForeignKey(User, related_name="pokees")
-	objects		= WishManager()
+class Appointment(models.Model):
+	desc 		= models.TextField()
+	time		= models.TimeField()
+	date 		= models.DateField()
+	status		= models.CharField(max_length=255)
+	user 		= models.ForeignKey(User, related_name="appointments")
+	objects		= AppointmentManager()
 	def __unicode__(self):
-		return unicode(self.creator)
+		return self.desc

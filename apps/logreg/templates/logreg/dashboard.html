@@ -10,50 +10,65 @@
 	<div>
 		<h2>Hello, {{ request.session.name }}!</h2>
 	</div>
-	<hr>
 	<div>
-		<p><b>Your Wish List:</b></p>
+		<h4>Here are your appointments for today, {{ current_date }}:</h4>
 		<table>
 			<tr>
-				<th>Item</th>
-				<th>Added By</th>
-				<th>Date Added</th>
+				<th>Tasks</th>
+				<th>Time</th>
+				<th>Status</th>
 				<th>Action</th>
 			</tr>
-			{% for item in user_items %}
+			{% if today_appointments.0 %}
+				{% for task in today_appointments %}
 			<tr>
-				<td><a href="/wish_items/{{ item.id }}">{{ item.name }}</a></td>
-				<td>{{ item.creator }}</td>
-				<td>{{ item.created_at }}</td>
-				{% if item.creator_id == request.session.id %}
-					<td><a href="/delete_item/{{ item.id }}">Delete</a></td>
-				{% else %}
-					<td><a href="/remove_item/{{ item.id }}">Remove from my Wishlist</a></td>
-				{% endif %}
+				<td>{{ task.desc }}</td>
+				<td>{{ task.time }}</td>
+				<td>{{ task.status }}</td>
+				<td><a href="/edit/{{ task.id }}">Edit</a> <a href="/delete/{{ task.id }}">Delete</a></td>
+			</tr>
+				{% endfor %}
+			{% elif today_appointments %}
+			<tr>
+				<td>{{ today_appointments.desc }}</td>
+				<td>{{ today_appointments.time }}</td>
+				<td>{{ today_appointments.status }}</td>
+				<td><a href="/edit/{{ today_appointments.id }}">Edit</a> <a href="/delete/{{ today_appointments.id }}">Delete</a></td>
+			</tr>
+			{% endif %}
+		</table>
+	</div>
+	<div>
+		<h4>Your other appointments:</h4>
+		<table>
+			<tr>
+				<th>Tasks</th>
+				<th>Date</th>
+				<th>Time</th>
+			</tr>
+			{% for task in user_appointments %}
+			<tr>
+				<td>{{ task.desc }}</td>
+				<td>{{ task.date }}</td>
+				<td>{{ task.time }}</td>
 			</tr>
 			{% endfor %}
 		</table>
 	</div>
-	<hr>
 	<div>
-		<p><b>Other Users' Wish List(s):</b></p>
-		<table>
-			<tr>
-				<th>Item</th>
-				<th>Added By</th>
-				<th>Date Added</th>
-				<th>Action</th>
-			</tr>
-			{% for item in all_items %}
-			<tr>
-				<td><a href="/wish_items/{{ item.id }}">{{ item.name }}</a></td>
-				<td>{{ item.creator }}</td>
-				<td>{{ item.created_at }}</td>
-				<td><a href="/add_wishlist/{{ item.id }}">Add to my Wishlist</a></td>
-			</tr>
-			{% endfor %}
-		</table><br><br>
-		<a href="/create_item">Add Item</a>
+		<h4>Add appointment</h4>
+		<form action="/add_appointment" method="POST">
+			{% csrf_token %}
+			Date: <input type="date" name="date"><br>
+			Time: <input type="time" name="time"><br>
+			Tasks: <input type="text" name="task"><br>
+			<input type="submit" value="Add">
+		</form>
 	</div>
+	{% if messages %}
+        {% for message in messages %}
+          <p>{{ message.message }}</p>
+        {% endfor %}
+      {% endif %}
 </body>
 </html>

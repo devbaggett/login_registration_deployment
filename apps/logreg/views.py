@@ -3,6 +3,7 @@ from django.contrib.messages import error
 from django.contrib import messages
 from django.db.models import Count
 from operator import itemgetter
+from datetime import date, datetime
 from .models import *
 import bcrypt
 
@@ -18,13 +19,12 @@ def register(request):
 	else:
 		new_user = User.objects.create(
 			name		= request.POST['name'],
-			alias 		= request.POST['alias'],
 			email		= request.POST['email'],
 			dob			= request.POST['dob'],
 			pw			= bcrypt.hashpw(request.POST['pw'].encode(), bcrypt.gensalt()))
 		request.session['name'] = new_user.name
 		request.session['id']	= new_user.id
-	return redirect('/pokes')
+	return redirect('/dashboard')
 
 def login(request):
 	errors = User.objects.validation(request.POST, 'login')
@@ -36,49 +36,67 @@ def login(request):
 		login_user = User.objects.get(email=request.POST['email_login'])
 		request.session['name']	= login_user.name
 		request.session['id']	= login_user.id
-	return redirect('/pokes')
+	return redirect('/dashboard')
 
-	
-
-def pokes(request):
+def dashboard(request):
 	current_user = User.objects.get(id=request.session['id'])
-	user = User.objects.annotate(num_pokers=Count('pokees')).filter(id=request.session['id']).first()
-	if user:
-		pokees = user.pokees.all()
-		new_pokees = {}
-		for poke in pokees:
-			if poke.creator.id not in new_pokees:
-				new_pokees[poke.creator.id] = [poke.creator.name, 1]
-			else:
-				new_pokees[poke.creator.id][1] += 1
-		new_pokers = []
-		for poke in new_pokees.itervalues():
-			new_pokers.append(poke)
-
-	pokelist = []
-	pokelist = sorted(new_pokers, key=itemgetter(1))
-	print pokelist
-
-
-
-
+	current_date = date.today()
+	user_appointments = current_user.appointments.all()
 	context = {
-		"pokelist" : pokelist,
-		"new_pokees" : new_pokees,
-		"poke_count" : len(new_pokees),
-		"pokes_acquired" : Poke.objects.filter(recipient=request.session['id']),
-		"users" : User.objects.all().exclude(id=request.session['id'])
+		"current_date" : current_date,
+		"today_appointments" : current_user.appointments.filter(date=current_date),
+		"user_appointments" : user_appointments.exclude(date=current_date)
 	}
-	return render(request, 'logreg/pokes.html', context)
+	return render(request, 'logreg/dashboard.html', context)
 
-def pokeSomeone(request, id):
-	current_user = User.objects.get(id=request.session['id'])
-	user_being_poked = User.objects.get(id=id)
-	
-	poke = Poke.objects.create(
-		creator 		= current_user,
-		recipient		= user_being_poked)
-	return redirect('/pokes')
+def addAppointment(request):
+	errors = Appointment.objects.validation(request.POST, 'add_appointment')
+	if len(errors):
+		for error in errors.itervalues():
+			messages.error(request, error)
+		return redirect('/dashboard')
+
+	task = Appointment.objects.create(
+		desc = request.POST['task'],
+		date = request.POST['date'],
+		time = request.POST['time'],
+		user = User.objects.get(id=request.session['id']),
+		status = "Pending")
+
+	then = datetime.strptime(request.POST['date'], '%Y-%m-%d').date()
+	now = date.today()
+
+	return redirect('/dashboard')
+
+def editAppointment(request, id):
+	context = {
+		"task" : Appointment.objects.get(id=id)
+	}
+	return render(request, 'logreg/edit_task.html', context)
+
+def updateAppointment(request, id):
+	errors = Appointment.objects.validation(request.POST, 'update_appointment')
+	if len(errors):
+		for error in errors.itervalues():
+			messages.error(request, error)
+		return redirect('/dashboard')
+	task = Appointment.objects.get(id=id)
+	if request.POST['desc']:
+		task.desc = request.POST['desc']
+	if request.POST['time']:
+		task.time = request.POST['time']
+	if request.POST['date']:
+		task.date = request.POST['date']
+	if request.POST['status']:
+		task.status = request.POST['status']
+	task.save()
+	return redirect('/dashboard')
+
+
+def deleteAppointment(request, id):
+	task = Appointment.objects.get(id=id)
+	task.delete()
+	return redirect('/dashboard')
 
 def logout(request):
 	request.session.clear()

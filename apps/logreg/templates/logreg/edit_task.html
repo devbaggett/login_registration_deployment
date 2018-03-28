@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Edit Appointments</title>
+</head>
+<body>
+	<div style="margin-left: 800px;">
+		<a href="/dashboard" style="margin-right: 10px;">Dashboard</a> |
+		<a href="/logout" style="margin-left: 10px;">Logout</a>
+	</div>
+	<div>
+		<h3>Make necessary edits and click "Update" when complete</h3>
+		<h5>(Fields left unedited will remain unchanged)</h5>
+		<form action="/updateAppointment/{{ task.id }}" method="POST">
+			{% csrf_token %}
+			Tasks: <input type="text" name="desc" placeholder="{{ task.desc }}"><br><br>
+			Status: 
+			<select name='status'>
+				{% if task.status == "Pending" %}
+				<option value="Pending">{{ task.status }}</option>
+				<option value="Done">Done</option>
+				<option value="Missed">Missed</option>
+				{% elif task.status == "Done" %}
+				<option value="Done">{{ task.status }}</option>
+				<option value="Pending">Pending</option>
+				<option value="Missed">Missed</option>
+				{% elif task.status == "Missed" %}
+				<option value="Missed">{{ task.status }}</option>
+				<option value="Pending">Pending</option>
+				<option value="Done">Done</option>
+				{% endif %}
+			</select><br><br>
+			<span style="color: blue">Current Date:</span> {{ task.date }}<br>
+			Date: <input type="date" name="date"><br><br>
+			<span style="color: blue">Current Time:</span> {{ task.time }}<br>
+			Time: <input type="time" name="time" placeholder="{{ task.time }}"><br><br>
+			<input type="submit" value="Update">
+		</form>
+	</div>
+	{% if messages %}
+        {% for message in messages %}
+          <p>{{ message.message }}</p>
+        {% endfor %}
+      {% endif %}
+</body>
+</html>
